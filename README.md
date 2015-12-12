@@ -1,11 +1,11 @@
 #xlsxsqlite
-**xlsxsqlite is a fork of [SQLite shell](https://www.sqlite.org/cli.html) that allows direct importing of Excel 2007 files (a.k.a. Open Office XML)**
+**xlsxsqlite is a fork of [SQLite shell](https://www.sqlite.org/cli.html) that allows direct importing of XLSX Excel 2007 files (a.k.a. Open Office XML)**
 
 ###FEATURES:
 * All the usual commands in [SQLite shell](https://www.sqlite.org/cli.html), plus `.importxlsx`
 * Only depends on [miniz](https://code.google.com/p/miniz/) (included for convenience) and [expat](http://expat.sourceforge.net/).
 
-The .XLSX format is just a glorified .ZIP (that I open thanks to miniz), containing a set of .XML files (that I parse thanks to Expat). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
+The XLSX format is just a glorified ZIP (that I open thanks to miniz), containing a set of XML files (that I parse thanks to Expat). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
 The direct importing of XLSX files removes the need of intermediate XLSX to CSV converters (like [cxlsx_to_csv](https://github.com/vpaesa/cxlsx_to_csv)).
 
 ###DATES BEHAVIOUR:
@@ -21,7 +21,7 @@ You can perform by yourself the conversion you need by using simple SQL UPDATE c
 ```
 .importxlsx FILE TABLE SHEET
 
-    FILE  input spreadsheet in Excel 2007 format (Office Open XML)
+    FILE  input spreadsheet in XLSX Excel 2007 format
     TABLE name of the table where data is imported
     SHEET number of the sheet within the workbook (default is first one)
 ```
