@@ -1,0 +1,455 @@
+--- shell.c	2018-09-22 20:23:40.583223400 +0200
++++ ../sqlite-amalgamation-3250100/shell.c	2018-09-18 22:36:35.000000000 +0200
+@@ -17,8 +17,6 @@
+ ** by "src/shell.c.in", then rerun the tool/mkshellc.tcl script.
+ */
+ /*
+-cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl
+-
+ ** 2001 September 15
+ **
+ ** The author disclaims copyright to this source code.  In place of
+@@ -219,22 +217,6 @@
+ # define setTextMode(X,Y)
+ #endif
+ 
+-#include "miniz.c"
+-#include <expat.h>
+-
+-#if defined(__amigaos__) && defined(__USE_INLINE__)
+-#include <proto/expat.h>
+-#endif
+-
+-#ifdef XML_LARGE_SIZE
+-#if defined(XML_USE_MSC_EXTENSIONS) && _MSC_VER < 1400
+-#define XML_FMT_INT_MOD "I64"
+-#else
+-#define XML_FMT_INT_MOD "ll"
+-#endif
+-#else
+-#define XML_FMT_INT_MOD "l"
+-#endif
+ 
+ /* True if the timer is enabled */
+ static int enableTimer = 0;
+@@ -10889,7 +10871,6 @@
+   ".headers on|off        Turn display of headers on or off\n"
+   ".help                  Show this message\n"
+   ".import FILE TABLE     Import data from FILE into TABLE\n"
+-  ".importxlsx FILE TABLE Import data from .XLSX FILE into TABLE\n"
+ #ifndef SQLITE_OMIT_TEST_CONTROL
+   ".imposter INDEX TABLE  Create imposter table TABLE on index INDEX\n"
+ #endif
+@@ -11445,47 +11426,6 @@
+   int cRowSep;        /* The row separator character.  (Usually "\n") */
+ };
+ 
+-// https://support.office.com/en-us/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3&usg=AFQjCNHniIQ4KTIFQZ6efVfpDtETwU9Cmw
+-// Total number of characters that an Excel cell can contain: 32,767
+-// Worst case is probably 32767 double quotes, that would be XML encoded as character entity &quot;
+-#define EXCELCELLSIZE (32767*6+4)
+-
+-/*
+-** An object used to parse XML content of XLSX files for import.
+-*/
+-typedef struct ImportXLSXCtx ImportXLSXCtx;
+-struct ImportXLSXCtx {
+-// Variables used by the XML SAX parser
+-  int    xml_depth;   /* Current dept while parsing the XML tree */
+-  char **shr_str;     /* Array of strings shared in spreadsheet */
+-  int   *shr_str_sz;  /* Array of lengths of the strings shared in spreadsheet */
+-  int    shr_str_num, shr_str_cnt;
+-  int    sheet_num_rows, sheet_num_cols;
+-  int    current_row, current_col, expected_col;
+-  int    lookup_v; /* Flag if needs look up into shared strings */
+-
+-/* The SQLite CSV importer invokes xRead() from do_meta_command() to get a field.
+- * The XLSX importer uses SAX callbacks, so most context in do_meta_command()
+- * is moved here to be available to callbacks
+-*/
+-  sqlite3 *db;                /* An open database */
+-  char *zTable;               /* Insert data into this table */
+-  char *zFile;                /* Name of file to extra content from */
+-  char *zSheet;               /* Number of the Excel sheet */
+-  char sheetname[64];         /* sheet path within XLSX */
+-  sqlite3_stmt *pInsertStmt;  /* The compiled INSERT statement */
+-  char **row_str;             /* Array of strings in a row */
+-  int   *row_str_sz;          /* Array of lengths of the strings in a row */
+-
+-/* The SQLite CSV importer uses variables z, n, nAlloc, and import_append_char() to
+-   accumulated text for a field character by character into a dynamically growing buffer.
+-  The XLSX importer uses shr_tv_val, shr_buff, and ChrHndlr() for that.
+-*/
+-  char  *shr_tv_val;
+-  int    shr_tv;
+-  char   shr_buff[EXCELCELLSIZE];
+-};
+-
+ /* Append a single byte to z[] */
+ static void import_append_char(ImportCtx *p, int c){
+   if( p->n+1>=p->nAlloc ){
+@@ -12156,271 +12096,6 @@
+ }
+ 
+ 
+-static inline void excelcolrow(char *string, int *outcol, int *outrow)
+-{
+-  int i, col, base;
+-
+-  col = 0;
+-  base = 1;
+-  for (i = 0; i < strlen(string); i++) {
+-    if (isalpha(string[i])) {
+-      col = col * 26 + ((toupper(string[i])) - 'A' + 1);
+-    }
+-    else
+-      break;
+-  }
+-  *outcol = col;
+-  *outrow = atoi(string + i);
+-  return;
+-}
+-
+-static inline void rangecolrow(char *string, int *outcol, int *outrow)
+-{
+-  int col, row;
+-  char *coloninstr;
+-
+-  coloninstr = strchr(string, ':');
+-  if (coloninstr) {
+-    string = coloninstr + 1;
+-    //fprintf(stderr, "rangecolrow: %s \n", string);
+-  }
+-  excelcolrow(string, &col, &row);
+-  *outcol = col;
+-  *outrow = row;
+-}
+-
+-static void XMLCALL StartSharedStrings(void *data, const char *el, const char **attr)
+-{
+-  int i;
+-  ImportXLSXCtx *ctx = data;
+-  
+-  if ((ctx->xml_depth == 0) && (!strcmp(el, "sst"))) {
+-    for (i = 0; attr[i]; i += 2) {
+-      if (!strcmp(attr[i], "uniqueCount")) {
+-        //fprintf(stderr, " %s='%s'\n", attr[i], attr[i + 1]);
+-        ctx->shr_str_cnt = atoi(attr[i + 1]);
+-        ctx->shr_str = malloc(sizeof(char *) * ctx->shr_str_cnt);
+-        ctx->shr_str_sz = malloc(sizeof(int) * ctx->shr_str_cnt);
+-      }
+-    }
+-  }
+-  if ((ctx->xml_depth == 2) && (!strcmp(el, "t"))) {
+-    ctx->shr_tv = 1;
+-    ctx->shr_tv_val = ctx->shr_buff;
+-    *(ctx->shr_tv_val) = 0;
+-  }
+-  ctx->xml_depth++;
+-}
+-
+-static void XMLCALL EndSharedStrings(void *data, const char *el)
+-{
+-  ImportXLSXCtx *ctx = data;
+-
+-  ctx->xml_depth--;
+-  if ((ctx->xml_depth == 2) && (!strcmp(el, "t"))) {
+-    ctx->shr_tv = 0;
+-    ctx->shr_str[ctx->shr_str_num] = strdup(ctx->shr_buff);
+-    ctx->shr_str_sz[ctx->shr_str_num] = ctx->shr_tv_val - ctx->shr_buff;
+-    //fprintf(stderr, "%s len:%d delta:%d\n", ctx->shr_buff, strlen(ctx->shr_buff), ctx->shr_tv_val - ctx->shr_buff);
+-    ctx->shr_str_num++;
+-  }
+-}
+-
+-static void XMLCALL ChrHndlr(void *data, const char *s, int len)
+-{
+-  char *src;
+-  ImportXLSXCtx *ctx = data;
+-
+-  if (ctx->shr_tv) {
+-    src = (char *) s;
+-    while (len) {
+-      *(ctx->shr_tv_val)++ = *src++;
+-      len--;
+-    }
+-    *(ctx->shr_tv_val) = 0;
+-  }
+-}
+-
+-static void XMLCALL StartSheet(void *data, const char *el, const char **attr)
+-{
+-  int i, j;
+-  ImportXLSXCtx *ctx = data;
+-
+-  if ((ctx->xml_depth == 1) && (!strcmp(el, "dimension"))) {
+-    for (i = 0; attr[i]; i += 2) {
+-      if (!strcmp(attr[i], "ref")) {
+-        //fprintf(stderr, "dimension %s='%s'\n", attr[i], attr[i + 1]);
+-        rangecolrow((char *) attr[i + 1], &(ctx->sheet_num_cols), &(ctx->sheet_num_rows));
+-        if (ctx->sheet_num_cols > sqlite3_limit(ctx->db, SQLITE_LIMIT_VARIABLE_NUMBER, -1)) {
+-           fprintf(stderr, "Only %d out of %d columns will be imported\n", 
+-             sqlite3_limit(ctx->db, SQLITE_LIMIT_VARIABLE_NUMBER, -1), ctx->sheet_num_cols);
+-           ctx->sheet_num_cols = sqlite3_limit(ctx->db, SQLITE_LIMIT_VARIABLE_NUMBER, -1);
+-        }
+-        ctx->row_str = malloc(sizeof(char *) * ctx->sheet_num_cols);
+-        ctx->row_str_sz = malloc(sizeof(int) * ctx->sheet_num_cols);
+-        //fprintf(stderr, "cols: %d  rows: %d\n", ctx->sheet_num_cols, ctx->sheet_num_rows);
+-      }
+-    }
+-  }
+-  if ((ctx->xml_depth == 2) && (!strcmp(el, "row"))) {
+-    for (i = 0; attr[i]; i += 2) {
+-      if (!strcmp(attr[i], "r")) {
+-        //fprintf(stderr, "row %s='%s'\n", attr[i], attr[i + 1]);
+-        ctx->expected_col = 1;
+-      }
+-    }
+-  }
+-  if ((ctx->xml_depth == 3) && (!strcmp(el, "c"))) {
+-    ctx->lookup_v = 0;
+-    for (i = 0; attr[i]; i += 2) {
+-      if (!strcmp(attr[i], "r")) {
+-        //fprintf(stderr, "c %s='%s'\n", attr[i], attr[i + 1]);
+-        excelcolrow((char *) attr[i + 1], &(ctx->current_col), &(ctx->current_row));
+-        for (j = ctx->expected_col; (j<ctx->current_col)&&(j<ctx->sheet_num_cols); j++)
+-          ctx->row_str[j-1] = NULL; // put_nullfield(ctx);
+-        ctx->expected_col = ctx->current_col+1;
+-      }
+-      else if (!strcmp(attr[i], "t")) {
+-        //fprintf(stderr, "c %s='%s'\n", attr[i], attr[i + 1]);
+-        if (*attr[i + 1] == 's') {
+-          ctx->lookup_v = -1;
+-        }
+-        //fprintf(stderr, "cols: %d  rows: %d\n", ctx->num_col, ctx->num_row);
+-      }
+-    }
+-  }
+-  if ((ctx->xml_depth == 4) && (!strcmp(el, "v"))) {
+-    ctx->shr_tv = 1;
+-    ctx->shr_tv_val = ctx->shr_buff;
+-    *(ctx->shr_tv_val) = 0;
+-  }
+-  ctx->xml_depth++;
+-}
+-
+-static void XMLCALL EndSheet(void *data, const char *el)
+-{
+-  ImportXLSXCtx *ctx = data;
+-
+-  ctx->xml_depth--;
+-  //fprintf(stderr, "EndSheet depth:%d elem:%s\n", ctx->xml_depth, el);
+-  if ((ctx->xml_depth == 4) && (!strcmp(el, "v"))) {
+-    ctx->shr_tv = 0;
+-    if (ctx->lookup_v) {
+-      //fprintf(stderr, "v %s\n", ctx->shr_str[atoi(ctx->shr_buff)]);
+-      //put_field(ctx, ctx->shr_str[atoi(ctx->shr_buff)], (ctx->current_col < ctx->sheet_num_cols));
+-      ctx->row_str[ctx->current_col -1] = ctx->shr_str[atoi(ctx->shr_buff)];
+-      ctx->row_str_sz[ctx->current_col -1] = ctx->shr_str_sz[atoi(ctx->shr_buff)];
+-    }
+-    else {
+-      //fprintf(stderr, "v %s\n", ctx->shr_buff);
+-      //put_field(ctx, ctx->shr_buff, (ctx->current_col < ctx->sheet_num_cols));
+-      ctx->row_str[ctx->current_col -1] = strdup(ctx->shr_buff);
+-      ctx->row_str_sz[ctx->current_col -1] = ctx->shr_tv_val - ctx->shr_buff;
+-    }
+-  }
+-  if ((ctx->xml_depth == 2) && (!strcmp(el, "row"))) {
+-    int i,j;
+-    int do_insert = 1;
+-    
+-    //fprintf(stderr, "EndSheet row:%d expected_col:%d sheet_num_cols:%d\n", ctx->current_row, ctx->expected_col, ctx->sheet_num_cols);
+-    for (j = ctx->expected_col; j<=ctx->sheet_num_cols; j++)
+-      ctx->row_str[j-1] = NULL; // put_nullfield(ctx);
+-
+-    // In first line, construct create table SQL(if new table), construct insert SQL
+-    if (ctx->current_row==1) {
+-      char *zSelectSql, *zInsertSql;
+-      char *zErrMsg;
+-      int rc;
+-      int sql_len;
+-      
+-      // Check if there is already a table with same name
+-      zSelectSql = sqlite3_mprintf("SELECT * FROM \"%w\"", ctx->zTable);
+-      if( zSelectSql==0 ){
+-        fprintf(stderr, "Error: out of memory\n");
+-        free(ctx);
+-        exit(1);
+-      }
+-      rc = sqlite3_exec(ctx->db, zSelectSql, NULL, 0, &zErrMsg);
+-      sqlite3_free(zSelectSql);
+-      
+-      // No table with same name, so we create it
+-      if( rc && sqlite3_strglob("no such table: *", zErrMsg)==0 ){
+-        char *zCreateSql = sqlite3_mprintf("CREATE TABLE \"%w\"", ctx->zTable);
+-        char cSep = '(';
+-
+-        do_insert = 0;
+-        // The fields read become the table column names
+-        for (i=0; i < ctx->sheet_num_cols; i++ ){
+-          zCreateSql = sqlite3_mprintf("%z%c\n  \"%w\" TEXT", zCreateSql, cSep, ctx->row_str[i]);
+-          cSep = ',';
+-        }
+-        if( cSep=='(' ){
+-          sqlite3_free(zCreateSql);
+-          fprintf(stderr,"%s: empty file\n", ctx->zFile);
+-          free(ctx);
+-          exit(1);
+-        }
+-        zCreateSql = sqlite3_mprintf("%z\n)", zCreateSql);
+-        rc = sqlite3_exec(ctx->db, zCreateSql, 0, 0, 0);
+-        sqlite3_free(zCreateSql);
+-        if( rc ){
+-          fprintf(stderr, "CREATE TABLE %s(...) failed: %s\n", ctx->zTable, sqlite3_errmsg(ctx->db));
+-          free(ctx);
+-          exit(1);
+-        }
+-      }
+-
+-      // Construct insert SQL for every row 
+-      sql_len = strlen30(ctx->zTable) + 25 + ctx->sheet_num_cols*2;
+-      zInsertSql = sqlite3_malloc64( sql_len );
+-      if( zInsertSql==0 ){
+-        fprintf(stderr, "Error: out of memory\n");
+-        free(ctx);
+-        exit(1);
+-      }
+-      sqlite3_snprintf(sql_len, zInsertSql, "INSERT INTO \"%w\" VALUES(?", ctx->zTable);
+-      j = strlen30(zInsertSql);
+-      for(i=1; i<ctx->sheet_num_cols; i++){
+-        zInsertSql[j++] = ',';
+-        zInsertSql[j++] = '?';
+-      }
+-      zInsertSql[j++] = ')';
+-      zInsertSql[j] = 0;
+-      rc = sqlite3_prepare_v2(ctx->db, zInsertSql, -1, &(ctx->pInsertStmt), 0);
+-      sqlite3_free(zInsertSql);
+-      if( rc ){
+-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(ctx->db));
+-        if (ctx->pInsertStmt) sqlite3_finalize(ctx->pInsertStmt);
+-        free(ctx);
+-        exit(1);
+-      }
+-    }
+-
+-    //fprintf(stderr, "row:%d %p\n", ctx->current_row, ctx->pInsertStmt);
+-    if (do_insert) {
+-      int needCommit, rc;
+-
+-      //fprintf(stderr, "insert row:%d\n", ctx->current_row);
+-      needCommit = sqlite3_get_autocommit(ctx->db);
+-      if( needCommit )
+-        sqlite3_exec(ctx->db, "BEGIN", 0, 0, 0);
+-      for(i=0; i < ctx->sheet_num_cols; i++){
+-        //fprintf(stderr, "insert row col:%d val:%s\n", i, ctx->row_str[i]);
+-        sqlite3_bind_text(ctx->pInsertStmt, i+1, ctx->row_str[i], -1, SQLITE_STATIC);
+-        // TODO: Store the field length while parsing XML, and use it here instead of -1
+-      }
+-      sqlite3_step(ctx->pInsertStmt);
+-      rc = sqlite3_reset(ctx->pInsertStmt);
+-      if( rc!=SQLITE_OK )
+-        fprintf(stderr, "%s:%d: INSERT failed: %s\n", ctx->zFile, ctx->current_row,
+-                sqlite3_errmsg(ctx->db));
+-      if( needCommit )
+-        sqlite3_exec(ctx->db, "COMMIT", 0, 0, 0);
+-    }
+-
+-  }
+-}
+-
+ /*
+ ** The implementation of SQL scalar function fkey_collate_clause(), used
+ ** by the ".lint fkey-indexes" command. This scalar function is always
+@@ -14116,92 +13791,6 @@
+     if( needCommit ) sqlite3_exec(p->db, "COMMIT", 0, 0, 0);
+   }else
+ 
+-  if( c=='i' && strncmp(azArg[0], "importxlsx", n)==0 ){
+-    ImportXLSXCtx *pCtx;        /* Reader context */
+-    size_t xml_size;
+-    void  *xml_ptr;
+-    XML_Parser xparser;
+-
+-    pCtx = calloc(1, sizeof(ImportXLSXCtx));
+-    pCtx->zFile = azArg[1];
+-    pCtx->zTable = azArg[2];
+-    pCtx->pInsertStmt = NULL;
+-    if( nArg==3 )
+-      pCtx->zSheet = "1";
+-    else if( nArg==4 )
+-      pCtx->zSheet = azArg[3];
+-    else if( nArg!=4 ){
+-      fprintf(stderr, "Usage: .importxlsx FILE TABLE SHEET\n");
+-      goto meta_command_exit;
+-    }
+-    seenInterrupt = 0;
+-    open_db(p, 0);
+-    pCtx->db = p->db;
+-
+-    pCtx->current_row = 1;
+-    if( pCtx->zFile[0]=='|' ){
+-      fprintf(stderr, "Error: pipes are not supported to open XLSX files\n");
+-      return 1;
+-    }
+-    
+-    // Process xl/sharedStrings.xml and load them into shr_str[]
+-    xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
+-      "xl/sharedStrings.xml", &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+-    if (xml_ptr) {
+-      //fprintf(stderr, "%s xl/sharedStrings.xml\n", pCtx->zFile);
+-      pCtx->xml_depth = 0;
+-      xparser = XML_ParserCreate(NULL);
+-      if (!xparser) {
+-        fprintf(stderr, "Couldn't allocate memory for parser\n");
+-        return 1;
+-      }
+-      XML_SetUserData(xparser, pCtx);
+-      XML_SetElementHandler(xparser, StartSharedStrings, EndSharedStrings);
+-      XML_SetCharacterDataHandler(xparser, ChrHndlr);
+-      if (XML_Parse(xparser, xml_ptr, xml_size, -1) == XML_STATUS_ERROR) {
+-        fprintf(stderr, "Parse error at line %" XML_FMT_INT_MOD "u:\n%s\n",
+-                 XML_GetCurrentLineNumber(xparser),
+-                 XML_ErrorString(XML_GetErrorCode(xparser)));
+-        return 1;
+-      }
+-      XML_ParserFree(xparser);
+-    }
+-    free(xml_ptr);
+-    
+-    // Process xl/worksheets/sheet1.xml and load them into sheet_tbl[,]
+-    sprintf(pCtx->sheetname, "xl/worksheets/sheet%s.xml", pCtx->zSheet);
+-    xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
+-      pCtx->sheetname, &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+-    if (xml_ptr) {
+-      //fprintf(stderr, "xl/worksheets/sheet%s.xml\n", pCtx->zSheet);
+-      pCtx->xml_depth = 0;
+-      pCtx->shr_tv = 0;
+-      xparser = XML_ParserCreate(NULL);
+-      if (!xparser) {
+-        fprintf(stderr, "Couldn't allocate memory for parser\n");
+-        return 1;
+-      }
+-      XML_SetUserData(xparser, pCtx);
+-      XML_SetElementHandler(xparser, StartSheet, EndSheet);
+-      XML_SetCharacterDataHandler(xparser, ChrHndlr);
+-      if (XML_Parse(xparser, xml_ptr, xml_size, -1) == XML_STATUS_ERROR) {
+-        fprintf(stderr, "Parse error at line %" XML_FMT_INT_MOD "u:\n%s\n",
+-                 XML_GetCurrentLineNumber(xparser),
+-                 XML_ErrorString(XML_GetErrorCode(xparser)));
+-        return 1;
+-      }
+-      XML_ParserFree(xparser);
+-    }
+-    else {
+-      fprintf(stderr, "Error: could not read sheet number %s.\n", pCtx->zSheet);
+-      return 1;
+-    }
+-    free(xml_ptr);
+-    //fprintf(stderr, "sqlite3_finalize\n");
+-    sqlite3_finalize(pCtx->pInsertStmt);
+-    free(pCtx);
+-  }else
+-
+ #ifndef SQLITE_UNTESTABLE
+   if( c=='i' && strncmp(azArg[0], "imposter", n)==0 ){
+     char *zSql;
