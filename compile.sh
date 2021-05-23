@@ -50,4 +50,4 @@
 # https://github.com/igorski89/SQLiteFuzzySearch
 # https://github.com/jhowie/sqlite3-ext
 # https://gitlab.com/liamh/extension-functions.git
-
+# https://github.com/SeanTater/sqlite3-extras
