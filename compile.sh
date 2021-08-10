@@ -8,7 +8,7 @@
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/ora.c -o mingw64-x86_64/ora.dll -s -static-libgcc
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/exec.c -o mingw64-x86_64/exec.dll -s -static-libgcc
 #/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-x86_64/odbc.dll -s -static-libgcc
-/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-x86_64/transform.dll -s -static-libgcc
+#/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-x86_64/transform.dll -s -static-libgcc
 /usr/bin/x86_64-w64-mingw32-g++ -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/xml.cpp ../sqlite-gui/include/pugixml.cpp -o mingw64-x86_64/xml.dll -DPUGIXML_NO_STL -s -static
 
 ### Windows 64-bit SQLite extensions https://www.sqlite.org/src/file?name=ext/misc/
@@ -20,6 +20,9 @@
 ### Windows 64-bit Keith Medcalf extensions http://www.dessus.com/files/sqlite3extensions.zip
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../KeithMedcalf/vsv.c -o mingw64-x86_64/vsv.dll -s -static-libgcc
 
+### Windows 64-bit jakethaw extensions https://github.com/jakethaw/pivot_vtab
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../pivot_vtab/pivot_vtab.c -o mingw64-x86_64/pivot_vtab.dll -s -static-libgcc
+
 ########################################
 
 ### Windows 32-bit binaries
@@ -30,7 +33,7 @@
 /usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/ora.c -o mingw64-i686/ora.dll -s -static-libgcc
 /usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/exec.c -o mingw64-i686/exec.dll -s -static-libgcc
 #/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-i686/odbc.dll -s -static-libgcc -lodbc32
-/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-i686/transform.dll -s -static-libgcc
+#/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-i686/transform.dll -s -static-libgcc
 /usr/bin/i686-w64-mingw32-g++ -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/xml.cpp ../sqlite-gui/include/pugixml.cpp -o mingw64-i686/xml.dll -DPUGIXML_NO_STL -s -static
 
 ### Windows 32-bit SQLite extensions
@@ -41,6 +44,9 @@
 
 ### Windows 32-bit Keith Medcalf extensions http://www.dessus.com/files/sqlite3extensions.zip
 /usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../KeithMedcalf/vsv.c -o mingw64-i686/vsv.dll -s -static-libgcc
+
+### Windows 64-bit jakethaw extensions https://github.com/jakethaw/pivot_vtab
+/usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../pivot_vtab/pivot_vtab.c -o mingw64-i686/pivot_vtab.dll -s -static-libgcc
 
 ############################
 # More SQLite extensions, not compiled:
