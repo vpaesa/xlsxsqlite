@@ -8,9 +8,13 @@ cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll mingw64-x86_64/
 ### Windows 64-bit Little Brother extensions https://github.com/little-brother/sqlite-gui/wiki#extensions
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/ora.c -o mingw64-x86_64/ora.dll -s -static-libgcc
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/exec.c -o mingw64-x86_64/exec.dll -s -static-libgcc
-#/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-x86_64/odbc.dll -s -static-libgcc
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-x86_64/odbc.dll -lodbc32 -s -static-libgcc
 #/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-x86_64/transform.dll -s -static-libgcc
 /usr/bin/x86_64-w64-mingw32-g++ -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/xml.cpp ../sqlite-gui/include/pugixml.cpp -o mingw64-x86_64/xml.dll -DPUGIXML_NO_STL -s -static
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/test.c -o mingw64-x86_64/test.dll -s -static-libgcc
+
+# vorchunpaul https://github.com/sqlitebrowser/sqlitebrowser/issues/2795
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/util.c -o mingw64-x86_64/util.dll -s -static-libgcc
 
 ### Windows 64-bit SQLite extensions https://www.sqlite.org/src/file?name=ext/misc/
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/json1.c -o mingw64-x86_64/json1.dll -s -static-libgcc
@@ -39,9 +43,14 @@ cp -u /usr/i686-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll mingw64-i686/
 ### Windows 32-bit Little Brother extensions
 /usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/ora.c -o mingw64-i686/ora.dll -s -static-libgcc
 /usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/exec.c -o mingw64-i686/exec.dll -s -static-libgcc
-#/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-i686/odbc.dll -s -static-libgcc -lodbc32
+/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/odbc.c -o mingw64-i686/odbc.dll -lodbc32 -s -static-libgcc -lodbc32
 #/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/transform.c -o mingw64-i686/transform.dll -s -static-libgcc
 /usr/bin/i686-w64-mingw32-g++ -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/xml.cpp ../sqlite-gui/include/pugixml.cpp -o mingw64-i686/xml.dll -DPUGIXML_NO_STL -s -static
+
+/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/test.c -o mingw64-i686/test.dll -s -static-libgcc
+
+# vorchunpaul https://github.com/sqlitebrowser/sqlitebrowser/issues/2795
+/usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/util.c -o mingw64-i686/util.dll -s -static-libgcc
 
 ### Windows 32-bit SQLite extensions
 /usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/json1.c -o mingw64-i686/json1.dll -s -static-libgcc
@@ -69,3 +78,6 @@ cp -u /usr/i686-w64-mingw32/sys-root/mingw/bin/libdl.dll mingw64-i686/
 # https://github.com/jhowie/sqlite3-ext
 # https://gitlab.com/liamh/extension-functions.git
 # https://github.com/SeanTater/sqlite3-extras
+# https://github.com/schiffma/distlib
+# https://github.com/schiffma/permutations
+# https://github.com/0x09/sqlite-statement-vtab
