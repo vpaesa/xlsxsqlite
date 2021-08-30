@@ -17,11 +17,10 @@ cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll mingw64-x86_64/
 # vorchunpaul https://github.com/sqlitebrowser/sqlitebrowser/issues/2795
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/util.c -o mingw64-x86_64/util.dll -s -static-libgcc
 
-### Windows 64-bit SQLite extensions https://www.sqlite.org/src/file?name=ext/misc/
-/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/json1.c -o mingw64-x86_64/json1.dll -s -static-libgcc
-/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/regexp.c -o mingw64-x86_64/regexp.dll -s -static-libgcc
+### Windows 64-bit SQLite misc extensions https://www.sqlite.org/src/file?name=ext/misc/
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/csv.c -o mingw64-x86_64/csv.dll -s -static-libgcc
-/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/series.c -o mingw64-x86_64/series.dll -s -static-libgcc
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/zipfile.c -o mingw64-x86_64/zipfile.dll -lz -s -static-libgcc
+cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/zlib1.dll mingw64-x86_64/
 
 ### Windows 64-bit Keith Medcalf extensions http://www.dessus.com/files/sqlite3extensions.zip
 /usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../KeithMedcalf/vsv.c -o mingw64-x86_64/vsv.dll -s -static-libgcc
@@ -54,11 +53,10 @@ cp -u /usr/i686-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll mingw64-i686/
 # vorchunpaul https://github.com/sqlitebrowser/sqlitebrowser/issues/2795
 /usr/bin/i686-w64-mingw32-gcc -Os -I ../sqlite-gui/include -shared ../sqlite-gui/extensions/util.c -o mingw64-i686/util.dll -s -static-libgcc
 
-### Windows 32-bit SQLite extensions
-/usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/json1.c -o mingw64-i686/json1.dll -s -static-libgcc
-/usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/regexp.c -o mingw64-i686/regexp.dll -s -static-libgcc
+### Windows 32-bit SQLite misc extensions
 /usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/csv.c -o mingw64-i686/csv.dll -s -static-libgcc
-/usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/series.c -o mingw64-i686/series.dll -s -static-libgcc
+/usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../sqlite/ext/misc/zipfile.c -o mingw64-i686/zipfile.dll -lz -s -static-libgcc
+cp -u /usr/i686-w64-mingw32/sys-root/mingw/bin/zlib1.dll mingw64-i686/
 
 ### Windows 32-bit Keith Medcalf extensions http://www.dessus.com/files/sqlite3extensions.zip
 /usr/bin/i686-w64-mingw32-gcc -Os -I . -shared ../KeithMedcalf/vsv.c -o mingw64-i686/vsv.dll -s -static-libgcc
