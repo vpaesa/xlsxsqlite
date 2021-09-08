@@ -17,7 +17,7 @@
 ** by "src/shell.c.in", then rerun the tool/mkshellc.tcl script.
 */
 /*
-cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl
+cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl -lz
 
 ** 2001 September 15
 **
@@ -237,7 +237,6 @@ static void setTextMode(FILE *file, int isOutput){
 # define setTextMode(X,Y)
 #endif
 
-#include "miniz.c"
 #include <expat.h>
 
 #if defined(__amigaos__) && defined(__USE_INLINE__)
@@ -19655,6 +19654,10 @@ static int do_meta_command(char *zLine, ShellState *p){
     size_t xml_size;
     void  *xml_ptr;
     XML_Parser xparser;
+    char *zSharedStringsSql;
+    char *zSheetSql;
+    sqlite3_stmt *pSharedStringsStmt = NULL;
+    sqlite3_stmt *pSheetStmt = NULL;
 
     pCtx = calloc(1, sizeof(ImportXLSXCtx));
     pCtx->zFile = azArg[1];
@@ -19679,10 +19682,29 @@ static int do_meta_command(char *zLine, ShellState *p){
     }
     
     // Process xl/sharedStrings.xml and load them into shr_str[]
-    xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
-      "xl/sharedStrings.xml", &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+    //xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
+    //  "xl/sharedStrings.xml", &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+    // Let's use zipfile SQLite extension instead of minizip library
+    zSharedStringsSql = sqlite3_mprintf("select data, sz from zipfile(%Q) where name ='xl/sharedStrings.xml';", pCtx->zFile);
+    rc = sqlite3_prepare_v2(pCtx->db, zSharedStringsSql, -1, &pSharedStringsStmt, 0);
+    if( rc ){
+      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pCtx->db));
+      if (pSharedStringsStmt) sqlite3_finalize(pSharedStringsStmt);
+      free(pCtx);
+      exit(1);
+    }
+    if( SQLITE_ROW != sqlite3_step(pSharedStringsStmt)){
+      fprintf(stderr, "No row in sharedStrings.xml: %s\n", sqlite3_errmsg(pCtx->db));
+      if (pSharedStringsStmt) sqlite3_finalize(pSharedStringsStmt);
+      free(pCtx);
+      exit(1);
+    }
+    xml_ptr  = (void *)sqlite3_column_text(pSharedStringsStmt, 0);
+    xml_size = sqlite3_column_int(pSharedStringsStmt, 1);
+    sqlite3_free(zSharedStringsSql);
+    
     if (xml_ptr) {
-      //fprintf(stderr, "%s xl/sharedStrings.xml\n", pCtx->zFile);
+      //fprintf(stderr, "%s xl/sharedStrings.xml sz:%d\n", pCtx->zFile, xml_size);
       pCtx->xml_depth = 0;
       xparser = XML_ParserCreate(NULL);
       if (!xparser) {
@@ -19693,19 +19715,37 @@ static int do_meta_command(char *zLine, ShellState *p){
       XML_SetElementHandler(xparser, StartSharedStrings, EndSharedStrings);
       XML_SetCharacterDataHandler(xparser, ChrHndlr);
       if (XML_Parse(xparser, xml_ptr, xml_size, -1) == XML_STATUS_ERROR) {
-        fprintf(stderr, "Parse error at line %" XML_FMT_INT_MOD "u:\n%s\n",
+        fprintf(stderr, "sharedStrings.xml parse error at line %" XML_FMT_INT_MOD "u:\n%s\n",
                  XML_GetCurrentLineNumber(xparser),
                  XML_ErrorString(XML_GetErrorCode(xparser)));
         return 1;
       }
       XML_ParserFree(xparser);
     }
-    free(xml_ptr);
-    
+    //free(xml_ptr); // only if it came from mz_zip_extract_archive_file_to_heap
+
     // Process xl/worksheets/sheet1.xml and load them into sheet_tbl[,]
     sprintf(pCtx->sheetname, "xl/worksheets/sheet%s.xml", pCtx->zSheet);
-    xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
-      pCtx->sheetname, &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+    //xml_ptr = mz_zip_extract_archive_file_to_heap(pCtx->zFile, 
+    //  pCtx->sheetname, &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
+    // Let's use zipfile SQLite extension instead of minizip library
+    zSheetSql = sqlite3_mprintf("select data, sz from zipfile(%Q) where name =%Q;", pCtx->zFile, pCtx->sheetname);
+    sqlite3_prepare_v2(pCtx->db, zSheetSql, -1, &pSheetStmt, 0);
+    if( rc ){
+      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pCtx->db));
+      if (pSheetStmt) sqlite3_finalize(pSheetStmt);
+      free(pCtx);
+      exit(1);
+    }
+    if( SQLITE_ROW != sqlite3_step(pSheetStmt)){
+      fprintf(stderr, "No row in %s: %s\n", pCtx->sheetname, sqlite3_errmsg(pCtx->db));
+      if (pSheetStmt) sqlite3_finalize(pSheetStmt);
+      free(pCtx);
+      exit(1);
+    }
+    xml_ptr  = (void *)sqlite3_column_text(pSheetStmt, 0);
+    xml_size = sqlite3_column_int(pSheetStmt, 1);
+    sqlite3_free(zSheetSql);
     if (xml_ptr) {
       //fprintf(stderr, "xl/worksheets/sheet%s.xml\n", pCtx->zSheet);
       pCtx->xml_depth = 0;
@@ -19719,7 +19759,7 @@ static int do_meta_command(char *zLine, ShellState *p){
       XML_SetElementHandler(xparser, StartSheet, EndSheet);
       XML_SetCharacterDataHandler(xparser, ChrHndlr);
       if (XML_Parse(xparser, xml_ptr, xml_size, -1) == XML_STATUS_ERROR) {
-        fprintf(stderr, "Parse error at line %" XML_FMT_INT_MOD "u:\n%s\n",
+        fprintf(stderr, "sheet%s.xml parse error at line %" XML_FMT_INT_MOD "u:\n%s\n", pCtx->zSheet,
                  XML_GetCurrentLineNumber(xparser),
                  XML_ErrorString(XML_GetErrorCode(xparser)));
         return 1;
@@ -19730,7 +19770,10 @@ static int do_meta_command(char *zLine, ShellState *p){
       fprintf(stderr, "Error: could not read sheet number %s.\n", pCtx->zSheet);
       return 1;
     }
-    free(xml_ptr);
+    //free(xml_ptr); // only if it came from mz_zip_extract_archive_file_to_heap
+    sqlite3_finalize(pSharedStringsStmt);
+    sqlite3_finalize(pSheetStmt);
+
     //fprintf(stderr, "sqlite3_finalize\n");
     sqlite3_finalize(pCtx->pInsertStmt);
     free(pCtx);
