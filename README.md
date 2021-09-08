@@ -3,9 +3,9 @@
 
 ### FEATURES:
 * All the usual commands in [SQLite shell](https://www.sqlite.org/cli.html), plus `.importxlsx`
-* Only depends on [miniz](https://code.google.com/p/miniz/) (included for convenience) and [expat](http://expat.sourceforge.net/).
+* Only depends on [zipfile SQLite extension](https://www.sqlite.org/zipfile.html) (formerly I used [miniz](https://code.google.com/p/miniz/)) and [expat](http://expat.sourceforge.net/).
 
-The XLSX format is just a glorified ZIP (that I open thanks to miniz), containing a set of XML files (that I parse thanks to Expat). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
+The XLSX format is just a glorified ZIP (that I open thanks to [zipfile](https://www.sqlite.org/zipfile.html)), containing a set of XML files (that I parse thanks to [expat](http://expat.sourceforge.net/)). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
 The direct importing of XLSX files removes the need of intermediate XLSX to CSV converters (like [cxlsx_to_csv](https://github.com/vpaesa/cxlsx_to_csv)).
 
 ### DATES BEHAVIOUR:
@@ -41,7 +41,7 @@ In the first case, when the table does not previously exist, the table is automa
 For the second case, when the table already exists, every row of the XLSX file, including the first row, is assumed to be actual content. If the XLSX file contains an initial row of column labels, that row will be read as data and inserted into the table. To avoid this, make sure that table does not previously exist.
 
 ### COMPILATION:
-`cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl`
+`cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl -lz`
 
 ### LICENSE:
 * My xlsxsqlite3 code is Public Domain. Same as [SQLite](https://www.sqlite.org/) (I'd be delighted if some day it gets incorporated into SQLite), and [miniz](https://code.google.com/p/miniz/). Notice though that [Expat](http://expat.sourceforge.net/) license is MIT.
