@@ -3,9 +3,9 @@
 
 ### FEATURES:
 * All the usual commands in [SQLite shell](https://www.sqlite.org/cli.html), plus `.importxlsx`
-* Only depends on [miniz](https://code.google.com/p/miniz/) (included for convenience) and [expat](http://expat.sourceforge.net/).
+* Only depends on [zipfile SQLite extension](https://www.sqlite.org/zipfile.html) (formerly I used [miniz](https://code.google.com/p/miniz/)) and [expat](http://expat.sourceforge.net/).
 
-The XLSX format is just a glorified ZIP (that I open thanks to miniz), containing a set of XML files (that I parse thanks to Expat). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
+The XLSX format is just a glorified ZIP (that I open thanks to [zipfile](https://www.sqlite.org/zipfile.html)), containing a set of XML files (that I parse thanks to [expat](http://expat.sourceforge.net/)). The [SQLite shell](https://www.sqlite.org/cli.html) already imports/exports a variety of text formats.
 The direct importing of XLSX files removes the need of intermediate XLSX to CSV converters (like [cxlsx_to_csv](https://github.com/vpaesa/cxlsx_to_csv)).
 
 ### DATES BEHAVIOUR:
@@ -41,7 +41,32 @@ In the first case, when the table does not previously exist, the table is automa
 For the second case, when the table already exists, every row of the XLSX file, including the first row, is assumed to be actual content. If the XLSX file contains an initial row of column labels, that row will be read as data and inserted into the table. To avoid this, make sure that table does not previously exist.
 
 ### COMPILATION:
-`cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl`
+`cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl -lz`
+
+### MEMORY USAGE:
+Be aware the XML data inside your .XLSX file is fully decompressed in memory. The command `unzip -l` will give you a good estimate of the memory needed.
+So for example this large 19MB spreadsheet will use temporally about 135MB of memory:
+```
+$ ls -ks owid-covid-data.xlsx
+19228 owid-covid-data.xlsx
+
+$ unzip -l owid-covid-data.xlsx
+Archive:  owid-covid-data.xlsx
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+     1167  01-31-1980 00:00   [Content_Types].xml
+      587  01-31-1980 00:00   _rels/.rels
+      697  01-31-1980 00:00   xl/_rels/workbook.xml.rels
+135734695  01-31-1980 00:00   xl/worksheets/sheet1.xml
+      550  01-31-1980 00:00   xl/workbook.xml
+    28949  01-31-1980 00:00   xl/sharedStrings.xml
+     1341  01-31-1980 00:00   xl/styles.xml
+     6994  01-31-1980 00:00   xl/theme/theme1.xml
+      592  01-31-1980 00:00   docProps/core.xml
+      784  01-31-1980 00:00   docProps/app.xml
+---------                     -------
+135776356                     10 files
+```
 
 ### LICENSE:
 * My xlsxsqlite3 code is Public Domain. Same as [SQLite](https://www.sqlite.org/) (I'd be delighted if some day it gets incorporated into SQLite), and [miniz](https://code.google.com/p/miniz/). Notice though that [Expat](http://expat.sourceforge.net/) license is MIT.
