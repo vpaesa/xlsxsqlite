@@ -19694,10 +19694,7 @@ static int do_meta_command(char *zLine, ShellState *p){
       exit(1);
     }
     if( SQLITE_ROW != sqlite3_step(pSharedStringsStmt)){
-      fprintf(stderr, "No row in sharedStrings.xml: %s\n", sqlite3_errmsg(pCtx->db));
-      if (pSharedStringsStmt) sqlite3_finalize(pSharedStringsStmt);
-      free(pCtx);
-      exit(1);
+      fprintf(stderr, "Unusual but valid: non-existing sharedStrings.xml: %s\n", sqlite3_errmsg(pCtx->db));
     }
     xml_ptr  = (void *)sqlite3_column_text(pSharedStringsStmt, 0);
     xml_size = sqlite3_column_int(pSharedStringsStmt, 1);

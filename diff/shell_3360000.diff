@@ -1,5 +1,5 @@
 --- ../sqlite-amalgamation-3360000/shell.c	2021-06-18 20:52:21.000000000 +0200
-+++ shell.c	2021-09-08 13:54:03.652895100 +0200
++++ shell.c	2021-09-21 11:32:55.769254400 +0200
 @@ -17,6 +17,8 @@
  ** by "src/shell.c.in", then rerun the tool/mkshellc.tcl script.
  */
@@ -359,7 +359,7 @@
  /*
  ** The implementation of SQL scalar function fkey_collate_clause(), used
  ** by the ".lint fkey-indexes" command. This scalar function is always
-@@ -19325,6 +19649,136 @@
+@@ -19325,6 +19649,133 @@
      }
    }else
  
@@ -408,10 +408,7 @@
 +      exit(1);
 +    }
 +    if( SQLITE_ROW != sqlite3_step(pSharedStringsStmt)){
-+      fprintf(stderr, "No row in sharedStrings.xml: %s\n", sqlite3_errmsg(pCtx->db));
-+      if (pSharedStringsStmt) sqlite3_finalize(pSharedStringsStmt);
-+      free(pCtx);
-+      exit(1);
++      fprintf(stderr, "Unusual but valid: non-existing sharedStrings.xml: %s\n", sqlite3_errmsg(pCtx->db));
 +    }
 +    xml_ptr  = (void *)sqlite3_column_text(pSharedStringsStmt, 0);
 +    xml_size = sqlite3_column_int(pSharedStringsStmt, 1);
