@@ -43,5 +43,30 @@ For the second case, when the table already exists, every row of the XLSX file, 
 ### COMPILATION:
 `cc -o xlsxsqlite shell.c sqlite3.c -lexpat -lpthread -ldl -lz`
 
+### MEMORY USAGE:
+Be aware the XML data inside your .XLSX file is fully decompressed in memory. The command `unzip -l` will give you a good estimate of the memory needed.
+So for example this large 19MB spreadsheet will use temporally about 135MB of memory:
+```
+$ ls -ks owid-covid-data.xlsx
+19228 owid-covid-data.xlsx
+
+$ unzip -l owid-covid-data.xlsx
+Archive:  owid-covid-data.xlsx
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+     1167  01-31-1980 00:00   [Content_Types].xml
+      587  01-31-1980 00:00   _rels/.rels
+      697  01-31-1980 00:00   xl/_rels/workbook.xml.rels
+135734695  01-31-1980 00:00   xl/worksheets/sheet1.xml
+      550  01-31-1980 00:00   xl/workbook.xml
+    28949  01-31-1980 00:00   xl/sharedStrings.xml
+     1341  01-31-1980 00:00   xl/styles.xml
+     6994  01-31-1980 00:00   xl/theme/theme1.xml
+      592  01-31-1980 00:00   docProps/core.xml
+      784  01-31-1980 00:00   docProps/app.xml
+---------                     -------
+135776356                     10 files
+```
+
 ### LICENSE:
 * My xlsxsqlite3 code is Public Domain. Same as [SQLite](https://www.sqlite.org/) (I'd be delighted if some day it gets incorporated into SQLite), and [miniz](https://code.google.com/p/miniz/). Notice though that [Expat](http://expat.sourceforge.net/) license is MIT.
