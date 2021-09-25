@@ -19727,7 +19727,7 @@ static int do_meta_command(char *zLine, ShellState *p){
     //  pCtx->sheetname, &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
     // Let's use zipfile SQLite extension instead of minizip library
     zSheetSql = sqlite3_mprintf("select data, sz from zipfile(%Q) where name =%Q;", pCtx->zFile, pCtx->sheetname);
-    sqlite3_prepare_v2(pCtx->db, zSheetSql, -1, &pSheetStmt, 0);
+    rc = sqlite3_prepare_v2(pCtx->db, zSheetSql, -1, &pSheetStmt, 0);
     if( rc ){
       fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pCtx->db));
       if (pSheetStmt) sqlite3_finalize(pSheetStmt);

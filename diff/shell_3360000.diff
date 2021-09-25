@@ -1,5 +1,5 @@
 --- ../sqlite-amalgamation-3360000/shell.c	2021-06-18 20:52:21.000000000 +0200
-+++ shell.c	2021-09-21 11:32:55.769254400 +0200
++++ shell.c	2021-09-25 19:16:35.045921200 +0200
 @@ -17,6 +17,8 @@
  ** by "src/shell.c.in", then rerun the tool/mkshellc.tcl script.
  */
@@ -441,7 +441,7 @@
 +    //  pCtx->sheetname, &xml_size, MZ_ZIP_FLAG_CASE_SENSITIVE);
 +    // Let's use zipfile SQLite extension instead of minizip library
 +    zSheetSql = sqlite3_mprintf("select data, sz from zipfile(%Q) where name =%Q;", pCtx->zFile, pCtx->sheetname);
-+    sqlite3_prepare_v2(pCtx->db, zSheetSql, -1, &pSheetStmt, 0);
++    rc = sqlite3_prepare_v2(pCtx->db, zSheetSql, -1, &pSheetStmt, 0);
 +    if( rc ){
 +      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pCtx->db));
 +      if (pSheetStmt) sqlite3_finalize(pSheetStmt);
