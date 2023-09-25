@@ -31,6 +31,28 @@ cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/zlib1.dll mingw64-x86_64/
 cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/zlib1.dll mingw64-x86_64/
 cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libdl.dll mingw64-x86_64/
 
+### Windows 64-bit Christian Werner extensions https://github.com/softace/sqliteodbc
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqliteodbc/impexp.c -o mingw64-x86_64/impexp.dll -s -static-libgcc -lcomdlg32
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -shared ../sqliteodbc/blobtoxy.c -o mingw64-x86_64/blobtoxy.dll -s -static-libgcc
+# /usr/bin/x86_64-w64-mingw32-gcc -Os -I . -I ../tcc/ -shared ../sqliteodbc/sqlite+tcc.c -o mingw64-x86_64/sqlite+tcc.dll -s -static-libgcc ../tcc/lib/libtcc1-64.a
+# http://download.savannah.nongnu.org/releases/tinycc/
+# cp -u  ../tcc-0.9.27-win64/libtcc.dll mingw64-x86_64/
+# cp -ur ../tcc-0.9.27-win64/include/tcc/ mingw64-x86_64/
+# cp -ur ../tcc-0.9.27-win64/{lib,libtcc}/ mingw64-x86_64/
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I/usr/x86_64-w64-mingw32/sys-root/mingw/include/libxml2 -I . -shared ../sqliteodbc/xpath.c -o mingw64-x86_64/xpath.dll -lxml2 -lxslt -s -static-libgcc
+
+### Windows 64 Alex García https://github.com/asg017/sqlite-lines
+cd ../sqlite-lines/
+COMMIT=$(shell git rev-parse HEAD)
+VERSION=$(shell cat VERSION)
+DATE=$(shell date +'%FT%TZ%z')
+cd -
+DEFINE_SQLITE_LINES_DATE=-DSQLITE_LINES_DATE="\"$(DATE)\""
+DEFINE_SQLITE_LINES_VERSION=-DSQLITE_LINES_VERSION="\"$(VERSION)\""
+DEFINE_SQLITE_LINES_SOURCE=-DSQLITE_LINES_SOURCE="\"$(COMMIT)\""
+DEFINE_SQLITE_LINES=$(DEFINE_SQLITE_LINES_DATE) $(DEFINE_SQLITE_LINES_VERSION) $(DEFINE_SQLITE_LINES_SOURCE)
+/usr/bin/x86_64-w64-mingw32-gcc -Os -I . -I ../sqlite-lines/ -shared ../sqlite-lines/sqlite-lines.c -o mingw64-x86_64/sqlite-lines.dll -s -static-libgcc
+
 ########################################
 
 ### Windows 32-bit binaries
@@ -82,3 +104,4 @@ cp -u /usr/i686-w64-mingw32/sys-root/mingw/bin/libdl.dll mingw64-i686/
 # https://github.com/jakethaw/xlsx_vtab            MIT (read xlsx as virtual table)
 # https://github.com/jakethaw/xml_to_json          MIT (convert XML to JSON)
 # https://github.com/jakethaw/replace_agg          MIT (replace aggregate function)
+# https://github.com/softace/sqliteodbc            PublicDomain (blobtoxy, impexp, sqlite+tcc, xpath)
